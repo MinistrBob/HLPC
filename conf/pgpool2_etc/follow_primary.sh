@@ -55,28 +55,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-## Get PostgreSQL major version
-echo follow_primary.sh: Get PostgreSQL major version
-PGVERSION=`${PGHOME}/bin/initdb -V | awk '{print $3}' | sed 's/\..*//' | sed 's/\([0-9]*\)[a-zA-Z].*/\1/'`
-
-echo follow_primary.sh: Check if PostgreSQL version more or equal 12
-if [ $PGVERSION -ge 12 ]; then
-    RECOVERYCONF=${NODE_PGDATA}/myrecovery.conf
-else
-    RECOVERYCONF=${NODE_PGDATA}/recovery.conf
-fi
+echo follow_primary.sh: Name for included postgresql config file
+RECOVERYCONF=${NODE_PGDATA}/postgresql.replication.conf
 
 ## Check the status of Standby
-echo follow_primary.sh: Check the status of Standby
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -w -D ${NODE_PGDATA} status
-
+#echo follow_primary.sh: Check the status of Standby
+#ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+#    postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -w -D ${NODE_PGDATA} status
 
 ## If Standby is running, synchronize it with the new Primary.
-echo follow_primary.sh: Check If Standby is running, synchronize it with the new Primary.
-if [ $? -eq 0 ]; then
+#if [ $? -eq 0 ]; then
 
-    echo follow_primary.sh: pg_rewind for node ${NODE_ID}
+    echo follow_primary.sh: Try pg_rewind for node ${NODE_ID}
 
     # Create replication slot "${REPL_SLOT_NAME}"
     echo follow_primary.sh: Create replication slot "${REPL_SLOT_NAME}"
@@ -88,62 +78,38 @@ if [ $? -eq 0 ]; then
 
     echo follow_primary.sh: Do pg_rewind
     ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
-
         set -o errexit
-
-        ${PGHOME}/bin/pg_ctl -w -m f -D ${NODE_PGDATA} stop
-
+        sudo systemctl stop postgresql@13-main.service
         ${PGHOME}/bin/pg_rewind -D ${NODE_PGDATA} --source-server=\"user=postgres host=${NEW_PRIMARY_NODE_HOST} port=${NEW_PRIMARY_NODE_PORT}\"
-
         rm -rf ${NODE_PGDATA}/pg_replslot/*
-
         cat > ${RECOVERYCONF} << EOT
 primary_conninfo = 'host=${NEW_PRIMARY_NODE_HOST} port=${NEW_PRIMARY_NODE_PORT} user=${REPLUSER} application_name=${NODE_HOST} passfile=''${HOME}/.pgpass'''
 recovery_target_timeline = 'latest'
 primary_slot_name = '${REPL_SLOT_NAME}'
 EOT
-
-        if [ ${PGVERSION} -ge 12 ]; then
-            sed -i -e \"\\\$ainclude_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'\" \
-                   -e \"/^include_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'/d\" ${PGCONFIG}/postgresql.conf
-            touch ${NODE_PGDATA}/standby.signal
-        else
-            echo \"standby_mode = 'on'\" >> ${RECOVERYCONF}
-        fi
-
-        ${PGHOME}/bin/pg_ctl -l /dev/null -w -D ${NODE_PGDATA} start
-
+        touch ${NODE_PGDATA}/standby.signal
+        sudo systemctl start postgresql@13-main.service
     "
-    
-    echo follow_primary.sh: Check result pg_rewind
+
     if [ $? -ne 0 ]; then
+        echo Try to stop postgresql.
+        ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl stop postgresql@13-main.service"
+
         echo follow_primary.sh: pg_rewind failed. Try pg_basebackup.
-
         ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
-
             set -o errexit
-
             # Execute pg_basebackup
             rm -rf ${NODE_PGDATA}
             ${PGHOME}/bin/pg_basebackup -h ${NEW_PRIMARY_NODE_HOST} -U $REPLUSER -p ${NEW_PRIMARY_NODE_PORT} -D ${NODE_PGDATA} -X stream
-
             cat > ${RECOVERYCONF} << EOT
 primary_conninfo = 'host=${NEW_PRIMARY_NODE_HOST} port=${NEW_PRIMARY_NODE_PORT} user=${REPLUSER} application_name=${NODE_HOST} passfile=''${HOME}/.pgpass'''
 recovery_target_timeline = 'latest'
 primary_slot_name = '${REPL_SLOT_NAME}'
 EOT
-
-            if [ ${PGVERSION} -ge 12 ]; then
-                sed -i -e \"\\\$ainclude_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'\" \
-                       -e \"/^include_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'/d\" ${PGCONFIG}/postgresql.conf
-                touch ${NODE_PGDATA}/standby.signal
-            else
-                echo \"standby_mode = 'on'\" >> ${RECOVERYCONF}
-            fi
+            touch ${NODE_PGDATA}/standby.signal
         "
 
         if [ $? -ne 0 ]; then
-
             echo follow_primary.sh: drop replication slot
             ${PGHOME}/bin/psql -h ${NEW_PRIMARY_NODE_HOST} -p ${NEW_PRIMARY_NODE_PORT} \
                 -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"  >/dev/null 2>&1
@@ -158,11 +124,10 @@ EOT
 
         echo follow_primary.sh: start Standby node on ${NODE_HOST}
         ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool $PGHOME/bin/pg_ctl -l /dev/null -w -D ${NODE_PGDATA} start
+            postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
 
     fi
 
-    echo follow_primary.sh: If start Standby successfully, attach this node
     if [ $? -eq 0 ]; then
 
         echo follow_primary.sh: Run pcp_attact_node to attach Standby node to Pgpool-II.
@@ -187,10 +152,10 @@ EOT
         exit 1
     fi
 
-else
-    echo follow_primary.sh: end: failed_nod_id=${NODE_ID} is not running. skipping follow primary command
-    exit 0
-fi
+#else
+#    echo follow_primary.sh: end: failed_nod_id=${NODE_ID} is not running. skipping follow primary command
+#    exit 0
+#fi
 
 echo follow_primary.sh: end: follow primary command is completed successfully
 exit 0

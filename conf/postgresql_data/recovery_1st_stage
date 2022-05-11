@@ -27,13 +27,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-## Get PostgreSQL major version
-PGVERSION=`${PGHOME}/bin/initdb -V | awk '{print $3}' | sed 's/\..*//' | sed 's/\([0-9]*\)[a-zA-Z].*/\1/'`
-if [ $PGVERSION -ge 12 ]; then
-    RECOVERYCONF=${DEST_NODE_PGDATA}/myrecovery.conf
-else
-    RECOVERYCONF=${DEST_NODE_PGDATA}/recovery.conf
-fi
+echo follow_primary.sh: Name for included postgresql config file
+RECOVERYCONF=${DEST_NODE_PGDATA}/postgresql.replication.conf
 
 ## Create replication slot "${REPL_SLOT_NAME}"
 ${PGHOME}/bin/psql -h ${PRIMARY_NODE_HOST} -p ${PRIMARY_NODE_PORT} \
@@ -45,35 +40,20 @@ fi
 
 ## Execute pg_basebackup to recovery Standby node
 ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "
-
     set -o errexit
-
     rm -rf $DEST_NODE_PGDATA
-
     ${PGHOME}/bin/pg_basebackup -h $PRIMARY_NODE_HOST -U $REPLUSER -p $PRIMARY_NODE_PORT -D $DEST_NODE_PGDATA -X stream
-
     cat > ${RECOVERYCONF} << EOT
 primary_conninfo = 'host=${PRIMARY_NODE_HOST} port=${PRIMARY_NODE_PORT} user=${REPLUSER} application_name=${DEST_NODE_HOST} passfile=''${HOME}/.pgpass'''
 recovery_target_timeline = 'latest'
 primary_slot_name = '${REPL_SLOT_NAME}'
 EOT
-
-    if [ ${PGVERSION} -ge 12 ]; then
-        sed -i -e \"\\\$ainclude_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'\" \
-               -e \"/^include_if_exists = '$(echo ${RECOVERYCONF} | sed -e 's/\//\\\//g')'/d\" ${DEST_NODE_PGDATA}/postgresql.conf
-        touch ${DEST_NODE_PGDATA}/standby.signal
-    else
-        echo \"standby_mode = 'on'\" >> ${RECOVERYCONF}
-    fi
-
-    sed -i \"s/#*port = .*/port = ${DEST_NODE_PORT}/\" ${DEST_NODE_PGDATA}/postgresql.conf
+    touch ${DEST_NODE_PGDATA}/standby.signal
 "
 
 if [ $? -ne 0 ]; then
-
     ${PGHOME}/bin/psql -h ${PRIMARY_NODE_HOST} -p ${PRIMARY_NODE_PORT} \
         -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"  >/dev/null 2>&1
-
     if [ $? -ne 0 ]; then
         echo ERROR: recovery_1st_stage: drop replication slot \"${REPL_SLOT_NAME}\" failed. You may need to drop replication slot manually.
     fi
@@ -83,25 +63,23 @@ if [ $? -ne 0 ]; then
 fi
 
 # start target server as a streaming replication standby server
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "
-	$PGHOME/bin/pg_ctl -l /dev/null -w -D $DEST_NODE_PGDATA start
-"
+ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
 
-## wait till the standby catches up primary server or
-## $MAX_DURATION seconds passes
-#sec=0
-#while [ $sec -lt $MAX_DURATION ]
-#do
-#  sec=`expr $sec + 1`
-#
-#  result=`psql -h ${MAIN_NODE_HOST} -p ${MAIN_NODE_PORT} -c "SELECT sent_lsn = replay_lsn FROM pg_stat_replication where application_name = '${DEST_NODE_HOST}'" postgres|sed -n 3p|sed 's/ //'`
-#
-#  echo "result: $result"
-#  if [ "$result" = "t" ];then
-#    sec=$MAX_DURATION
-#  fi
-#  sleep 1
-#done
+# wait till the standby catches up primary server or
+# $MAX_DURATION seconds passes
+sec=0
+while [ $sec -lt $MAX_DURATION ]
+do
+  sec=`expr $sec + 1`
+
+  result=`psql -h ${MAIN_NODE_HOST} -p ${MAIN_NODE_PORT} -c "SELECT sent_lsn = replay_lsn FROM pg_stat_replication where application_name = '${DEST_NODE_HOST}'" postgres|sed -n 3p|sed 's/ //'`
+
+  echo "result: $result"
+  if [ "$result" = "t" ];then
+    sec=$MAX_DURATION
+  fi
+  sleep 1
+done
 
 echo recovery_1st_stage: end: recovery_1st_stage is completed successfully
 exit 0
