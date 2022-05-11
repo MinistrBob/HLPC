@@ -1,2 +1,3 @@
-# HLPC
-Highload Postgresql Cluster on pgpool2
+# Highload Postgresql Cluster (HLPC) on pgpool2
+
+
