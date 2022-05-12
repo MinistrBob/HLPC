@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script is executed by "recovery_1st_stage" to recovery a Standby node.
+# This script is executed by "recovery_1st_stage" to recovery a Standby node. 
 
 set -o xtrace
 

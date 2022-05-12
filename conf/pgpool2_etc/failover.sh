@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script is run by failover_command. Some standby node promote to a primary.
+# This script is run by failover_command. Some standby node promote to a primary. 
 
 set -o xtrace
 
