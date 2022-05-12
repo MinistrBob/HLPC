@@ -56,7 +56,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo follow_primary.sh: Name for included postgresql config file
-RECOVERYCONF=${NODE_PGDATA}/postgresql.replication.conf
+RECOVERYCONF=${PGCONFIG}/postgresql.replication.conf
 
 ## Check the status of Standby
 #echo follow_primary.sh: Check the status of Standby

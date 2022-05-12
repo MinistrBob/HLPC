@@ -12,6 +12,7 @@ DEST_NODE_PORT="$6"
 PRIMARY_NODE_HOST="$7"
 
 PGHOME=/usr/lib/postgresql/13
+PGCONFIG=/etc/postgresql/13/main
 # Пока что без архивных журналов (также удалил rm -rf ${ARCHIVEDIR}/* и restore_command = 'scp ${PRIMARY_NODE_HOST}:${ARCHIVEDIR}/%f %p')
 # ARCHIVEDIR=/var/lib/pgsql/archivedir
 REPLUSER=replicator
@@ -28,7 +29,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo follow_primary.sh: Name for included postgresql config file
-RECOVERYCONF=${DEST_NODE_PGDATA}/postgresql.replication.conf
+RECOVERYCONF=${PGCONFIG}/postgresql.replication.conf
 
 ## Create replication slot "${REPL_SLOT_NAME}"
 ${PGHOME}/bin/psql -h ${PRIMARY_NODE_HOST} -p ${PRIMARY_NODE_PORT} \
