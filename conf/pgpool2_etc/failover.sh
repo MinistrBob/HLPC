@@ -49,7 +49,7 @@ fi
 
 echo failover.sh: Test passwordless SSH
 ## Test passwordless SSH
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NEW_MAIN_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
+ssh -T postgres@${NEW_MAIN_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
 if [ $? -ne 0 ]; then
     echo failover.sh: passwordless SSH to postgres@${NEW_MAIN_NODE_HOST} failed. Please setup passwordless SSH.
     exit 1
@@ -74,8 +74,7 @@ fi
 
 ## Promote Standby node.
 echo failover.sh: primary node is down, promote new_main_node_id=$NEW_MAIN_NODE_ID on ${NEW_MAIN_NODE_HOST}.
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    postgres@${NEW_MAIN_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -D ${NEW_MAIN_NODE_PGDATA} -w promote
+ssh -T postgres@${NEW_MAIN_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -D ${NEW_MAIN_NODE_PGDATA} -w promote
 if [ $? -ne 0 ]; then
     echo ERROR: failover.sh: end: failover failed
     exit 1

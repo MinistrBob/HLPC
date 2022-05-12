@@ -21,7 +21,7 @@ REPL_SLOT_NAME=${DEST_NODE_HOST//[-.]/_}
 echo recovery_1st_stage: start: pg_basebackup for Standby node $DEST_NODE_ID
 
 ## Test passwordless SSH
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${DEST_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
+ssh -T postgres@${DEST_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
 
 if [ $? -ne 0 ]; then
     echo recovery_1st_stage: passwordless SSH to postgres@${DEST_NODE_HOST} failed. Please setup passwordless SSH.
@@ -40,7 +40,7 @@ if [ $? -ne 0 ]; then
 fi
 
 ## Execute pg_basebackup to recovery Standby node
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "
+ssh -T postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "
     set -o errexit
     rm -rf $DEST_NODE_PGDATA
     ${PGHOME}/bin/pg_basebackup -h $PRIMARY_NODE_HOST -U $REPLUSER -p $PRIMARY_NODE_PORT -D $DEST_NODE_PGDATA -X stream
@@ -64,7 +64,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # start target server as a streaming replication standby server
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
+ssh -T postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
 
 # wait till the standby catches up primary server or
 # $MAX_DURATION seconds passes

@@ -49,7 +49,7 @@ echo follow_primary.sh: start: Standby node ${NODE_ID}
 
 ## Test passwordless SSH
 echo follow_primary.sh: Test passwordless SSH
-ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NEW_PRIMARY_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
+ssh -T postgres@${NEW_PRIMARY_NODE_HOST} -i ~/.ssh/id_rsa_pgpool ls /tmp > /dev/null
 if [ $? -ne 0 ]; then
     echo follow_primary.sh: end: passwordless SSH to postgres@${NEW_PRIMARY_NODE_HOST} failed. Please setup passwordless SSH.
     exit 1
@@ -60,8 +60,7 @@ RECOVERYCONF=${PGCONFIG}/postgresql.replication.conf
 
 ## Check the status of Standby
 #echo follow_primary.sh: Check the status of Standby
-#ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-#    postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -w -D ${NODE_PGDATA} status
+#ssh -T postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool ${PGHOME}/bin/pg_ctl -w -D ${NODE_PGDATA} status
 
 ## If Standby is running, synchronize it with the new Primary.
 #if [ $? -eq 0 ]; then
@@ -77,7 +76,7 @@ RECOVERYCONF=${PGCONFIG}/postgresql.replication.conf
     fi
 
     echo follow_primary.sh: Do pg_rewind
-    ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
+    ssh -T postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
         set -o errexit
         sudo systemctl stop postgresql@13-main.service
         ${PGHOME}/bin/pg_rewind -D ${NODE_PGDATA} --source-server=\"user=postgres host=${NEW_PRIMARY_NODE_HOST} port=${NEW_PRIMARY_NODE_PORT}\"
@@ -93,10 +92,10 @@ EOT
 
     if [ $? -ne 0 ]; then
         echo Try to stop postgresql.
-        ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl stop postgresql@13-main.service"
+        ssh -T postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl stop postgresql@13-main.service"
 
         echo follow_primary.sh: pg_rewind failed. Try pg_basebackup.
-        ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
+        ssh -T postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "
             set -o errexit
             # Execute pg_basebackup
             rm -rf ${NODE_PGDATA}
@@ -123,8 +122,7 @@ EOT
         fi
 
         echo follow_primary.sh: start Standby node on ${NODE_HOST}
-        ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
+        ssh -T postgres@${NODE_HOST} -i ~/.ssh/id_rsa_pgpool "sudo systemctl start postgresql@13-main.service"
 
     fi
 

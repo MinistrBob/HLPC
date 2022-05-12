@@ -12,7 +12,7 @@ DEVICE=eth0
 for pgpool in "${PGPOOLS[@]}"; do
     [ "$HOSTNAME" = "$pgpool" ] && continue
 
-    ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null postgres@$pgpool -i ~/.ssh/id_rsa_pgpool "
+    ssh -T postgres@$pgpool -i ~/.ssh/id_rsa_pgpool "
         /usr/bin/sudo /usr/bin/ip addr del $VIP/24 dev $DEVICE
     "
 done
