@@ -62,7 +62,7 @@ if [ $OLD_PRIMARY_NODE_ID != "-1" -a $FAILED_NODE_ID != $OLD_PRIMARY_NODE_ID ]; 
 
     # If Standby node is down, drop replication slot.
     ${PGHOME}/bin/psql -h ${OLD_PRIMARY_NODE_HOST} -p ${OLD_PRIMARY_NODE_PORT} \
-        -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"  >/dev/null 2>&1
+        -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"
 
     if [ $? -ne 0 ]; then
         echo ERROR: failover.sh: drop replication slot \"${REPL_SLOT_NAME}\" failed. You may need to drop replication slot manually.

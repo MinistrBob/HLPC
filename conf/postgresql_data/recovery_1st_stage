@@ -12,11 +12,12 @@ DEST_NODE_PORT="$6"
 PRIMARY_NODE_HOST="$7"
 
 PGHOME=/usr/lib/postgresql/13
-PGCONFIG=/etc/postgresql/13/main
-# Пока что без архивных журналов (также удалил rm -rf ${ARCHIVEDIR}/* и restore_command = 'scp ${PRIMARY_NODE_HOST}:${ARCHIVEDIR}/%f %p')
-# ARCHIVEDIR=/var/lib/pgsql/archivedir
+#PGCONFIG=/etc/postgresql/13/main
+#Пока что без архивных журналов (также удалил rm -rf ${ARCHIVEDIR}/* и restore_command = 'scp ${PRIMARY_NODE_HOST}:${ARCHIVEDIR}/%f %p')
+#ARCHIVEDIR=/var/lib/pgsql/archivedir
 REPLUSER=replicator
 REPL_SLOT_NAME=${DEST_NODE_HOST//[-.]/_}
+RECOVERYCONF=${NODE_PGDATA}/postgresql.auto.conf
 
 echo recovery_1st_stage: start: pg_basebackup for Standby node $DEST_NODE_ID
 
@@ -28,12 +29,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo follow_primary.sh: Name for included postgresql config file
-RECOVERYCONF=${PGCONFIG}/postgresql.replication.conf
-
 ## Create replication slot "${REPL_SLOT_NAME}"
 ${PGHOME}/bin/psql -h ${PRIMARY_NODE_HOST} -p ${PRIMARY_NODE_PORT} \
-    -c "SELECT pg_create_physical_replication_slot('${REPL_SLOT_NAME}');"  >/dev/null 2>&1
+    -c "SELECT pg_create_physical_replication_slot('${REPL_SLOT_NAME}');"
 
 if [ $? -ne 0 ]; then
     echo ERROR: recovery_1st_stage: create replication slot \"${REPL_SLOT_NAME}\" failed. You may need to create replication slot manually.
@@ -43,7 +41,7 @@ fi
 ssh -T postgres@$DEST_NODE_HOST -i ~/.ssh/id_rsa_pgpool "
     set -o errexit
     rm -rf $DEST_NODE_PGDATA
-    ${PGHOME}/bin/pg_basebackup -h $PRIMARY_NODE_HOST -U $REPLUSER -p $PRIMARY_NODE_PORT -D $DEST_NODE_PGDATA -X stream
+    ${PGHOME}/bin/pg_basebackup -h $PRIMARY_NODE_HOST -U $REPLUSER -p $PRIMARY_NODE_PORT -D $DEST_NODE_PGDATA -X stream -P
     cat > ${RECOVERYCONF} << EOT
 primary_conninfo = 'host=${PRIMARY_NODE_HOST} port=${PRIMARY_NODE_PORT} user=${REPLUSER} application_name=${DEST_NODE_HOST} passfile=''${HOME}/.pgpass'''
 recovery_target_timeline = 'latest'
@@ -54,7 +52,7 @@ EOT
 
 if [ $? -ne 0 ]; then
     ${PGHOME}/bin/psql -h ${PRIMARY_NODE_HOST} -p ${PRIMARY_NODE_PORT} \
-        -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"  >/dev/null 2>&1
+        -c "SELECT pg_drop_replication_slot('${REPL_SLOT_NAME}');"
     if [ $? -ne 0 ]; then
         echo ERROR: recovery_1st_stage: drop replication slot \"${REPL_SLOT_NAME}\" failed. You may need to drop replication slot manually.
     fi
