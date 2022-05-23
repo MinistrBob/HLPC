@@ -1,0 +1,12 @@
+---
+- name: High Load Postgresql Cluster
+  hosts: all
+  become: yes
+  become_method: sudo
+  gather_facts: no
+  vars:
+    configure_firewalld: true  # true / false
+    remove_firewalld: false    # Set to true to remove firewalld    
+  roles:
+    - postgresql
+    - pgpool2
