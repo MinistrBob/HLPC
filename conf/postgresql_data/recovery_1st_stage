@@ -17,7 +17,7 @@ PGHOME=/usr/lib/postgresql/13
 #ARCHIVEDIR=/var/lib/pgsql/archivedir
 REPLUSER=replicator
 REPL_SLOT_NAME=${DEST_NODE_HOST//[-.]/_}
-RECOVERYCONF=${NODE_PGDATA}/postgresql.auto.conf
+RECOVERYCONF=${DEST_NODE_PGDATA}/postgresql.auto.conf
 
 echo recovery_1st_stage: start: pg_basebackup for Standby node $DEST_NODE_ID
 
