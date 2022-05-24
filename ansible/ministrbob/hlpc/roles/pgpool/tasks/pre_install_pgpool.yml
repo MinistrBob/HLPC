@@ -1,6 +1,6 @@
 ---
 - name: Install en_US.UTF-8 locale if needed
-  community.general.locale_gen:
+  locale_gen:
     name: en_US.UTF-8
     state: present
   when: eng_messages

@@ -1,25 +1,33 @@
 ---
-become: yes
-become_method: sudo
-gather_facts: yes
+- name: Run against postgresql
+  become: yes
+  become_method: sudo
+  gather_facts: yes
+  hosts: postgresql
+  vars_files:
+    - main_vars.yml
+  roles:
+    - name: postgresql
+      when: install_postgresql
 
-vars_files:
-  - main_vars.yml
+- name: Run against pgpool
+  become: yes
+  become_method: sudo
+  gather_facts: yes
+  hosts: pgpool
+  vars_files:
+    - main_vars.yml
+  roles:
+    - name: pgpool
+      when: install_pgpool
 
-- hosts: postgresql
-    roles:
-      - name: postgresql
-        when: install_postgresql
-- hosts: pgpool
-    roles:
-      - name: pgpool
-        when: install_pgpool
 # DEBUG
-tasks:
-  - name: Show facts available on the system
-    ansible.builtin.debug:
-      var: 
-        # - ansible_facts
-        - ansible_facts['os_family']
-        - ansible_facts['distribution']
-        - ansible_facts['distribution_major_version']
+- name: For debug
+  tasks:
+    - name: Show facts available on the system
+      ansible.builtin.debug:
+        var: 
+          # - ansible_facts
+          - ansible_facts['os_family']
+          - ansible_facts['distribution']
+          - ansible_facts['distribution_major_version']
