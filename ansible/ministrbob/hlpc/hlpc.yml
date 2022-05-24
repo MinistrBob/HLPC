@@ -1,5 +1,5 @@
 ---
-- name: Run against postgresql
+- name: Install postgresql
   become: yes
   become_method: sudo
   gather_facts: yes
@@ -10,7 +10,7 @@
     - name: postgresql
       when: install_postgresql
 
-- name: Run against pgpool
+- name: Install pgpool
   become: yes
   become_method: sudo
   gather_facts: yes
@@ -23,9 +23,10 @@
 
 # DEBUG
 - name: For debug
+  hosts: localhost
   tasks:
     - name: Show facts available on the system
-      ansible.builtin.debug:
+      debug:
         var: 
           # - ansible_facts
           - ansible_facts['os_family']

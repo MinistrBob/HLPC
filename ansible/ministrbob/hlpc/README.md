@@ -11,6 +11,8 @@ git clone git@github.com:MinistrBob/HLPC.git
 # Run playbook hlpc.yml
 -- Prepare vars file
 cd ~/HLPC/ansible/ministrbob/hlpc
-mv example-vars.yml main_vars.yml
+cp example-main_vars.yml main_vars.yml
+cp example-secret_vars.yml secret_vars.yml
 nano main_vars.yml
+nano secret_vars.yml
 -- 

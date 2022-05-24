@@ -1,3 +1,5 @@
 *.retry
 *.tar.gz
+*.bak
 main_vars.yml
+secret_vars.yml

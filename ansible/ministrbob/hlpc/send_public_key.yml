@@ -1,0 +1,12 @@
+---
+- hosts: all
+  gather_facts: no
+  vars_files:
+    - secret_vars.yml
+  tasks:
+    - name: Send SSH public key
+      authorized_key:
+        user: {{ ssh_key_user }}
+        state: present
+        manage_dir: yes
+        key: "{{ lookup('file', ssh_key_path) }}"
