@@ -11,8 +11,9 @@ vars_files:
       - name: postgresql
         when: install_postgresql
 - hosts: pgpool
-    - name: pgpool
-      when: install_pgpool
+    roles:
+      - name: pgpool
+        when: install_pgpool
 # DEBUG
 tasks:
   - name: Show facts available on the system
