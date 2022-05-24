@@ -1,0 +1,11 @@
+---
+- name: Pre-reqs install task
+  include: pre_install.yml
+
+- name: Install postgresql
+  include: install_postgresql.yml
+
+- name: Setup firewall
+  include: setup_firewall.yml
+  when: setup_firewall
+

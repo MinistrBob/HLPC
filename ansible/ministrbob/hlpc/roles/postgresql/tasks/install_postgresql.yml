@@ -1,0 +1,11 @@
+---
+- name: "Install packages"
+  dnf: "name={{ item }} state=present"
+  with_items:
+    - postgresql
+    - postgresql-server
+
+- name: "Install Python packages"
+  pip: "name={{ item }}  state=present"
+  with_items:
+    - psycopg2-binary

@@ -1,12 +1,24 @@
 ---
-- name: High Load Postgresql Cluster
-  hosts: all
-  become: yes
-  become_method: sudo
-  gather_facts: no
-  vars:
-    configure_firewalld: true  # true / false
-    remove_firewalld: false    # Set to true to remove firewalld    
-  roles:
-    - postgresql
-    - pgpool2
+become: yes
+become_method: sudo
+gather_facts: yes
+
+vars_files:
+  - main_vars.yml
+
+- hosts: postgresql
+    roles:
+      - name: postgresql
+        when: install_postgresql
+- hosts: pgpool
+    - name: pgpool
+      when: install_pgpool
+# DEBUG
+tasks:
+  - name: Show facts available on the system
+    ansible.builtin.debug:
+      var: 
+        # - ansible_facts
+        - ansible_facts['os_family']
+        - ansible_facts['distribution']
+        - ansible_facts['distribution_major_version']

@@ -1,2 +1,3 @@
 *.retry
 *.tar.gz
+main_vars.yml

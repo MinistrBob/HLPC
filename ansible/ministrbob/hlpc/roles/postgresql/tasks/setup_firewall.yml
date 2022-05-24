@@ -1,0 +1,4 @@
+---
+- name: NOP
+  ansible.builtin.debug:
+    msg: "NOP"
