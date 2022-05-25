@@ -3,3 +3,4 @@
 *.bak
 main_vars.yml
 secret_vars.yml
+test.yml

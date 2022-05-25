@@ -1,6 +1,7 @@
 # Ansible Collection - ministrbob.hlpc
 
-Documentation for the collection.
+At the moment, the collection is designed to install Postgresql version starting from 12 and higher on the Astra Linux Special Edition 1.7 OS that corresponds to Debian 10 (Buster) or Ubuntu 18.04 (Bionic).  
+In the future, you can easily modify this collection for other OS versions.  
 
 # Clone git repo
 cd ~

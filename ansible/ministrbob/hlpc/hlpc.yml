@@ -20,15 +20,3 @@
   roles:
     - name: pgpool
       when: install_pgpool
-
-# DEBUG
-- name: For debug
-  hosts: localhost
-  tasks:
-    - name: Show facts available on the system
-      debug:
-        var: 
-          # - ansible_facts
-          - ansible_facts['os_family']
-          - ansible_facts['distribution']
-          - ansible_facts['distribution_major_version']

@@ -3,7 +3,7 @@
 ## Test stand
 | IP            | Name    | Description        |
 |---------------|---------|--------------------|
-| 172.26.12.190 | VIP     | VIP for Postgresql |
+| 172.26.12.190 | VIP     | VIP for pgpool2    |
 | 172.26.12.191 | astra1  | Postgresql 13      |
 | 172.26.12.192 | astra2  | Postgresql 13      |
 | 172.26.12.193 | astra3  | Postgresql 13      |

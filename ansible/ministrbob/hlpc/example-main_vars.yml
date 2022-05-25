@@ -2,8 +2,14 @@
 # What components to install
 install_postgresql: true  # Whether to install postgresql?
 install_pgpool: true  # Whether to install pgpool?
+
 # Common settings
 eng_messages: true  # This is actual when the OS locale is not English. If you want error messages to be in English then set to - true. In this case, the english OS locale will be installed, the LANG environment variable and the lc_messages postgresql parameter will be set.
+
+# Postgresql
+major_postgresql_version: 12  # Postgresql version (12, 13, 14)
+
 # Firewall
+# you can remove firewall at all or configure firewall or do nothing.
 remove_firewall: false  # Set to true to remove firewall from OS at all.
 setup_firewall: true  # Do you want to configure firewall (port settings)?
