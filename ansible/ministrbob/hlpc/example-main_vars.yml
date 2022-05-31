@@ -7,7 +7,17 @@ install_pgpool: true  # Whether to install pgpool?
 eng_messages: true  # This is actual when the OS locale is not English. If you want error messages to be in English then set to - true. In this case, the english OS locale will be installed, the LANG environment variable and the lc_messages postgresql parameter will be set.
 
 # Postgresql
-major_postgresql_version: 12  # Postgresql version (12, 13, 14)
+pg_version: 12  # Postgresql version (12, 13, 14)
+# It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
+pg_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"
+pg_apt_repository_filename: "pgdg"
+pg_apt_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+pg_dropcluster: "/usr/bin/pg_dropcluster"
+pg_cluster_name: "main"
+pg_service_name: "postgresql@{{ pg_version }}-main"
+pg_user: "postgres"
+pg_data: "/var/lib/postgresql/{{ pg_version }}/main"  # this is default path for postgresql DB cluster 
+#pg_data: "/data/postgresql/{{ pg_version }}/main"
 
 # Firewall
 # you can remove firewall at all or configure firewall or do nothing.
