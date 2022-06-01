@@ -1,6 +1,0 @@
-# Inventory architecture variant 1
-[postgresql]
-astra[1:3]
-
-[pgpool]
-astra[4:6]

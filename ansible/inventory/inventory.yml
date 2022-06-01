@@ -1,0 +1,101 @@
+---
+all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    postgresql_version: 12
+    repmgr_version: 5.2
+    repmgr_master: pgsql01
+pgcluster:
+  hosts:
+    pgsql01:
+      ansible_host: 192.168.56.10  
+      repmgr_node_id: 1 
+      repmgr_priority: 3
+    pgsql02:   
+      ansible_host: 192.168.56.11
+      repmgr_node_id: 2
+      repmgr_priority: 2
+    pgsql03:     
+      ansible_host: 192.168.56.12
+      repmgr_node_id: 3
+      repmgr_priority: 1
+  vars:
+    # Required configuration items
+    repmgr_target_group: pgcluster
+    repmgr_promote_command: /usr/bin/repmgr standby promote -f /etc/repmgr.conf --log-to-file
+    repmgr_follow_command: /usr/bin/repmgr standby follow -f /etc/repmgr.conf --log-to-file --upstream-node-id=%n
+    repmgr_monitoring_history: "yes"
+    repmgr_connection_check_type: query
+    repmgr_log_level: INFO
+    # Basic settings
+    postgresql_listen_addresses: "*"
+    postgresql_port: 5432
+    postgresql_max_connections: 128
+    # WAL
+    postgresql_wal_level: "replica"
+    postgresql_max_wal_senders: 10
+    postgresql_max_replication_slots: 10
+    postgresql_wal_keep_segments: 100
+    postgresql_hot_standby: on
+    postgresql_ext_install_repmgr: yes
+    postgresql_shared_preload_libraries:
+      - repmgr
+    postgresql_checkpoint_completion_target: 0.7
+    postgresql_wal_buffers: 16MB
+    postgresql_min_wal_size: 1GB
+    postgresql_max_wal_size: 4GB
+    # memory
+    postgresql_work_mem: 5242kB
+    postgresql_shared_buffers: 512MB
+    postgresql_maintenance_work_mem: 128MB
+    # query tuning
+    postgresql_effective_cache_size: 1536MB
+    postgresql_random_page_cost: 1.1
+    # disk
+    postgresql_effective_io_concurrency: 200
+    postgresql_max_worker_processes: 2
+    postgresql_max_parallel_workers_per_gather: 1
+    postgresql_max_parallel_workers: 2
+    postgresql_max_parallel_maintenance_workers: 1
+    # postgresql logging 
+    postgresql_log_checkpoints: on
+    postgresql_log_connections: on
+    postgresql_log_disconnections: on
+    postgresql_log_temp_files: 0
+    # pg_hba.conf
+    postgresql_pg_hba_custom:
+      - { type: "host", database: "replication", user: "{{ repmgr_user }}", address: "192.168.56.0/24", method: "trust" }  
+      - { type: "host", database: "replication", user: "{{ repmgr_user }}", address: "127.0.0.1/32", method: "trust" }  
+      - { type: "host", database: "{{ repmgr_database }}", user: "{{ repmgr_user }}", address: "127.0.0.1/32", method: "trust" }  
+      - { type: "host", database: "{{ repmgr_database }}", user: "{{ repmgr_user }}", address: "192.168.56.0/24", method: "trust" }  
+      - { type: "host", database: "all", user: "postgres", address: "192.168.56.0/24", method: "trust" }
+      - { type: "host", database: "testdb", user: "all", address: "192.168.56.0/24", method: "md5" }
+
+    # Databases
+    postgresql_databases:
+      - name: "{{ repmgr_database }}"
+        owner: "{{ repmgr_user }}"
+        encoding: "UTF-8"
+      - name: testdb
+        owner: admin
+        encoding: "UTF-8"
+    # Users
+    postgresql_users:
+      - name: "{{ repmgr_user }}"
+        pass: "{{ repmgr_password }}"
+      - name: admin
+        pass: secret # postgresql >=10 does not accept unencrypted passwords
+        encrypted: yes
+    # Roles
+    postgresql_user_privileges:
+      - name: "{{ repmgr_user }}"
+        db: "{{ repmgr_database }}"
+        priv: "ALL"
+        role_attr_flags: "SUPERUSER,REPLICATION"
+      - name: admin
+        db: testdb
+        role_attr_flags: "SUPERUSER"
+    # required for repmgr node rejoin --force-rewind
+    postgresql_data_checksums: true
+    postgresql_wal_compression: on
+    postgresql_wal_log_hints: on

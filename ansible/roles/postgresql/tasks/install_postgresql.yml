@@ -1,0 +1,69 @@
+---
+# It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
+- name: "Add specified repository into sources list using specified filename"
+  apt_repository:
+    repo: "{{ pg_apt_repository }} {{ pg_version }}"
+    state: present
+    filename: {{ pg_apt_repository_filename }}
+
+- name: "Add an Apt signing key for postgresql"
+  apt_key:
+    url: {{ pg_apt_key }}
+    state: present
+
+# In Astra Linux 1.7 postgresql depends on libpq5 library and we need specific version this library. If the version is not specified explicitly, then the default version from the native OS repository will be installed.
+- name: "Get libpq5 version"
+  shell: "apt-cache policy libpq5 | grep -Po -m1 '{{ pg_version }}.*pgdg\\S*'"
+  register: libpq5_version
+
+- name: "Install libpq5 library"
+  apt:
+    name: "libpq5={{ libpq5_version.stdout }}"
+    state: present
+# --------------------------------------------
+
+- name: "Install postgresql packages"
+  package:
+    name:
+      - postgresql-client-{{ pg_version }}
+      - postgresql-{{ pg_version }}
+    state: present
+    update_cache: yes
+  register: postgresql_installed
+
+#- name: "Install Python packages"
+#  package:
+#    name:
+#      - psycopg2-binary
+#    state: present
+
+- name: Stop postgresql service {{ pg_service_name }}
+  systemd:
+    name: "{{ pg_service_name }}"
+    state: stopped
+  when: postgresql_installed.changed
+
+- name: Drop the default database
+  shell: "{{ pg_dropcluster }} {{ pg_version }} {{ pg_cluster_name }}"
+  args:
+    executable: /bin/bash
+  when: postgresql_installed.changed
+  register: drop_result
+  changed_when: drop_result.rc == 0
+  failed_when: drop_result.rc != 0
+
+- name: Setup pg_hba.conf
+  template:
+    src: "pg_hba.conf.j2"
+    dest: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: 0640
+
+
+- postgres.conf конфигурировать (параметры для postgresql в файле инвентаря, т.к. для каждого стенда свои параметры кроме общих)
+- Create postgresql DB cluster with checksums
+/usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
+
+
+- запустить БД
