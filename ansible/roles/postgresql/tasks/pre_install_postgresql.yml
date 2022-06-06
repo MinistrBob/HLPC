@@ -4,3 +4,9 @@
     name: en_US.UTF-8
     state: present
   when: eng_messages
+
+- name: Install required packages
+  apt:
+    name:
+      - python-apt
+    state: present
