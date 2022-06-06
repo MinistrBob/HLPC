@@ -61,9 +61,7 @@
     mode: 0640
 
 
-- postgres.conf конфигурировать (параметры для postgresql в файле инвентаря, т.к. для каждого стенда свои параметры кроме общих)
-- Create postgresql DB cluster with checksums
-/usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
-
-
-- запустить БД
+#- postgres.conf конфигурировать (параметры для postgresql в файле инвентаря, т.к. для каждого стенда свои параметры кроме общих)
+#- Create postgresql DB cluster with checksums
+#/usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
+#- запустить БД
