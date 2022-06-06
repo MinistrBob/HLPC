@@ -5,7 +5,7 @@
   gather_facts: yes
   hosts: postgresql
   vars_files:
-    - main_vars.yml
+    - secret_vars.yml
   roles:
     - name: postgresql
       when: install_postgresql
@@ -16,7 +16,7 @@
   gather_facts: yes
   hosts: pgpool
   vars_files:
-    - main_vars.yml
+    - secret_vars.yml
   roles:
     - name: pgpool
       when: install_pgpool
