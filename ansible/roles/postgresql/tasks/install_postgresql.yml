@@ -4,11 +4,11 @@
   apt_repository:
     repo: "{{ pg_apt_repository }} {{ pg_version }}"
     state: present
-    filename: {{ pg_apt_repository_filename }}
+    filename: "{{ pg_apt_repository_filename }}"
 
 - name: "Add an Apt signing key for postgresql"
   apt_key:
-    url: {{ pg_apt_key }}
+    url: "{{ pg_apt_key }}"
     state: present
 
 # In Astra Linux 1.7 postgresql depends on libpq5 library and we need specific version this library. If the version is not specified explicitly, then the default version from the native OS repository will be installed.
@@ -25,8 +25,8 @@
 - name: "Install postgresql packages"
   package:
     name:
-      - postgresql-client-{{ pg_version }}
-      - postgresql-{{ pg_version }}
+      - "postgresql-client-{{ pg_version }}"
+      - "postgresql-{{ pg_version }}"
     state: present
     update_cache: yes
   register: postgresql_installed
