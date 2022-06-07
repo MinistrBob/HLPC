@@ -5,3 +5,4 @@
 **/test.yml
 **/*_ansible_facts.json
 **/*.pg_hba.conf.j2
+**/*.postgresql.conf.j2

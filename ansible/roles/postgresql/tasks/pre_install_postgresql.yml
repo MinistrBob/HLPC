@@ -5,7 +5,6 @@
     state: present
   when: eng_messages
 
-
 # package dialog for fix:
 #   debconf: не удалось инициализировать интерфейс: Dialog
 #   debconf: (Ни одна из dialog-подобных программ не установлена, поэтому вы не можете использовать dialog-интерфейс. at /usr/share/perl5/Debconf/FrontEnd/Dialog.pm line 76.)

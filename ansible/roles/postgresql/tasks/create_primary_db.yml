@@ -57,8 +57,45 @@
   changed_when: drop_database.rc == 0
   failed_when: drop_database.rc != 0
 
+# Create postgresql DB cluster with checksums (option --data-checksums is required)
+# like /usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
+- name: Create the database
+  shell: "{{ pg_createcluster }} --datadir={{ pg_data_dir }} {{ pg_version }} {{ pg_cluster_name }} -- --data-checksums"
+  when: drop_database.changed
+  register: create_database
+  changed_when: create_database.rc == 0
+  failed_when: create_database.rc != 0
+
+- name: Create a directory for archive WAL
+  file:
+    path: "{{ pg_data_dir }}/pg_archive"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+
+- name: Create a directory for logs
+  file:
+    path: "{{ pg_data_dir }}/log"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+
 - name: Change postgres user password
   user:
     name: "{{ pg_user }}"
     state: present
     password: "{{ pg_password | password_hash('sha512') }}"
+
+- name: Setup pg_hba.conf
+  template:
+    src: "pg_hba.conf.j2"
+    dest: "{{ pg_conf_dir }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: 0640
+
+#- postgres.conf конфигурировать (параметры для postgresql в файле инвентаря, т.к. для каждого стенда свои параметры кроме общих)
+
+#- запустить БД

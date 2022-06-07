@@ -1,10 +1,10 @@
 ---
 supported_os:
-  - CentOS7
-  - Ubuntu18
-  - Ubuntu20
-  - Debian9
-  - Debian10
+#  - CentOS7
+#  - Ubuntu18
+#  - Ubuntu20
+#  - Debian9
+#  - Debian10
   - AstraLinux1
 
 supported_pg_version:

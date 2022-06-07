@@ -1,13 +1,13 @@
 ---
 # ATTENTION: In the current implementation, the collection is designed to install Postgresql version starting from 12 and higher on the Astra Linux Special Edition 1.7 OS that corresponds to Debian 10 (Buster) or Ubuntu 18.04 (Bionic).
-             For other OS or Postgresql versions, the collection needs to be modified.
+#            For other OS or Postgresql versions, the collection needs to be modified.
 
 # Inventory HLPC architecture variant 1 (postgres and pgpool on different servers = six servers)
 
 all:
   vars:
 
-    stand_name: "stand01"  # config files are linked to this name. 
+    stand_name: "stand01"  # config files are linked to this name
 
     # What components to install
     install_postgresql: true  # Whether to install postgresql?
@@ -19,29 +19,36 @@ all:
 
     # Firewall. You can remove firewall at all or configure firewall or do nothing.
     remove_firewall: false  # Set to true to remove firewall from OS at all.
-    setup_firewall: true  # Do you want to configure firewall (port settings)?
+    setup_firewall: false  # Do you want to configure firewall (port settings)?
 
 postgresql:
   vars:
 
-    # Postgresql install
+    # Postgresql install common
     pg_version: 12  # Postgresql version (12, 13, 14)
-    pg_user: "postgres"
+
+    # Postgresql repo
     pg_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"  # It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
     pg_apt_repository_filename: "pgdg"
     pg_apt_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+
+    # Postgresql repo cluster DB options
     pg_dropcluster: "/usr/bin/pg_dropcluster"  # cluster removal utility
     pg_createcluster: "/usr/bin/pg_createcluster"  # cluster create utility
     pg_cluster_name: "main"
     pg_service_name: "postgresql@{{ pg_version }}-{{ pg_cluster_name }}"  # This service name is usually on "like Debian" OS
     pg_data_dir: "/var/lib/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is default path for postgresql DB cluster on "like Debian" OS
-    #pg_data_dir: "/data/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is NOT default path for postgresql DB cluster
+    #pg_data_dir: "/mnt/data/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is NOT default path for postgresql DB cluster
     pg_conf_dir: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is default path for postgresql configuration files on "like Debian" OS
 
-  hosts:
-    astra1:
-    astra2:
-    astra3:
+children:
+  primary:
+    hosts:
+      astra1:
+  standby:
+    hosts:
+      astra2:
+      astra3:
 
 pgpool:
   hosts:
