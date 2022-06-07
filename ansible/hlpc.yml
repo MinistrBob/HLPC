@@ -1,4 +1,20 @@
 ---
+- name: Set the os variable
+  set_fact:
+    os: "{{ ansible_distribution | replace(' ', '') }}{{ ansible_distribution_major_version }}"  # "Astra Linux" + "1"
+
+- name: Check support for Operating System
+  fail:
+    msg: "Operating System = {{ os }} not supported.
+          Supported versions are {{ supported_os }}"
+  when: os not in supported_os
+
+- name: Check supported versions for Database engine
+  fail:
+    msg: "Database Engine Version = {{ pg_version }} not supported.
+          Supported versions are {{ supported_pg_version }}"
+  when: pg_version|int not in supported_pg_version
+
 - name: Install postgresql
   become: yes
   become_method: sudo
