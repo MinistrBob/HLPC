@@ -25,11 +25,18 @@
 - name: "Install postgresql packages"
   package:
     name:
-      - "postgresql-client-{{ pg_version }}"
       - "postgresql-{{ pg_version }}"
+      - "postgresql-client-{{ pg_version }}"
     state: present
     update_cache: yes
   register: postgresql_installed
+
+- name: "Install postgresql contrib"
+  package:
+    name:
+      - "postgresql-contrib-{{ postgresql_version }}"
+    state: present
+    update_cache: yes
 
 #- name: "Install Python packages"
 #  package:
@@ -52,10 +59,14 @@
   changed_when: drop_result.rc == 0
   failed_when: drop_result.rc != 0
 
+
+
+
+# ПЕРЕДЕЛАТЬ ЭТУ ЧАСТЬ ЧТОБЫ МОЖНО БЫЛО НАСТРОИТЬ
 - name: Setup pg_hba.conf
   template:
     src: "pg_hba.conf.j2"
-    dest: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}/pg_hba.conf"
+    dest: "{{ pg_conf }}/pg_hba.conf"
     owner: postgres
     group: postgres
     mode: 0640

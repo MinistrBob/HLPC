@@ -1,6 +1,7 @@
 *.retry
 *.tar.gz
 *.bak
-main_vars.yml
-secret_vars.yml
-test.yml
+**/secret_vars.yml
+**/test.yml
+**/*_ansible_facts.json
+**/*.pg_hba.conf.j2
