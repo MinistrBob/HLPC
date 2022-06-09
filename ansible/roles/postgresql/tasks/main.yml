@@ -1,11 +1,13 @@
 ---
+- name: Setup firewall
+  include: 10_setup_firewall_postgresql.yml
+  when: setup_firewall and inventory_hostname in groups['pi']
+
 - name: Pre-reqs install task
-  include: pre_install_postgresql.yml
+  include: 20_pre_install_postgresql.yml
 
 - name: Install postgresql
-  include: install_postgresql.yml
+  include: 30_install_postgresql.yml
 
-- name: Setup firewall
-  include: setup_firewall_postgresql.yml
-  when: setup_firewall
-
+- name: Create primary DB
+  include: 40_post_install_postgresql.yml

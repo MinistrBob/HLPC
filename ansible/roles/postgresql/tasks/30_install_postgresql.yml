@@ -50,9 +50,11 @@
     state: stopped
   when: postgresql_installed.changed
 
-- name: Drop the default database
+- name: Drop the default cluster
   shell: "{{ pg_dropcluster }} {{ pg_version }} {{ pg_cluster_name }}"
   when: postgresql_installed.changed
+  become: yes
+  become_user: "{{ pg_admin }}"
   register: drop_database
   changed_when: drop_database.rc == 0
   failed_when: drop_database.rc != 0
@@ -61,7 +63,9 @@
 # like /usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
 - name: Create the database
   shell: "{{ pg_createcluster }} --datadir={{ pg_data_dir }} {{ pg_version }} {{ pg_cluster_name }} -- --data-checksums"
-  when: drop_database.changed
+  become: yes
+  become_user: "{{ pg_admin }}"
+  when: drop_database.changed and inventory_hostname in groups['pg_primary']
   register: create_database
   changed_when: create_database.rc == 0
   failed_when: create_database.rc != 0
@@ -70,32 +74,73 @@
   file:
     path: "{{ pg_data_dir }}/pg_archive"
     state: directory
-    owner: postgres
-    group: postgres
+    owner: {{ pg_admin }}
+    group: {{ pg_admin }}
     mode: '0700'
+  when: inventory_hostname in groups['pg_primary']
 
 - name: Create a directory for logs
   file:
     path: "{{ pg_data_dir }}/log"
     state: directory
-    owner: postgres
-    group: postgres
+    owner: {{ pg_admin }}
+    group: {{ pg_admin }}
     mode: '0700'
-
-- name: Change postgres user password
-  user:
-    name: "{{ pg_user }}"
-    state: present
-    password: "{{ pg_password | password_hash('sha512') }}"
+  when: inventory_hostname in groups['pg_primary']
 
 - name: Setup pg_hba.conf
   template:
-    src: "pg_hba.conf.j2"
+    src: "{{ stand_name }}.pg_hba.conf.j2"
     dest: "{{ pg_conf_dir }}/pg_hba.conf"
-    owner: postgres
-    group: postgres
+    owner: {{ pg_admin }}
+    group: {{ pg_admin }}
     mode: 0640
 
-#- postgres.conf конфигурировать (параметры для postgresql в файле инвентаря, т.к. для каждого стенда свои параметры кроме общих)
+- name: Setup postgresql.conf
+  template:
+    src: "{{ stand_name }}.postgresql.conf.j2"
+    dest: "{{ pg_conf_dir }}/postgresql.conf"
+    owner: {{ pg_admin }}
+    group: {{ pg_admin }}
+    mode: 0640
 
-#- запустить БД
+- name: Start postgresql service {{ pg_service_name }}
+  systemd:
+    name: "{{ pg_service_name }}"
+    state: stopped
+  when: create_database.changed and inventory_hostname in groups['pg_primary']
+
+# psql -U username -d database -c "ALTER USER {{ pg_admin }} WITH PASSWORD '{{ pg_admin_password }}';"
+- name: Change password for {{ pg_admin }} user in DB
+  become: yes
+  become_user: "{{ pg_admin }}"
+  postgresql_user: 
+    name: "{{ pg_admin }}"
+    password: "{{ pg_admin_password }}"
+  environment:
+    PGOPTIONS: "-c password_encryption=scram-sha-256"
+  when: inventory_hostname in groups['pg_primary']
+
+# Slots will be created with pg_basebackup
+#- name: Create physical slot if doesn't exist
+#  become: yes
+#  become_user: "{{ pg_admin }}"
+#  postgresql_slot:
+#    slot_name: physical_one
+
+- name: Сreating a special user {{ pg_replicator }} for primary-standby replication
+  become: yes
+  become_user: "{{ pg_admin }}"
+  postgresql_user: 
+    name: "{{ pg_replicator }}"
+    password: "{{ pg_replicator_password }}"
+  environment:
+    PGOPTIONS: "-c password_encryption=scram-sha-256"
+  when: inventory_hostname in groups['pg_primary']
+
+
+
+
+
+#S	pg_basebackup
+#S	systemctl start postgresql@13-main.service

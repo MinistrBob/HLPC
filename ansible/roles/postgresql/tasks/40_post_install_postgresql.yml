@@ -1,0 +1,10 @@
+---
+- name: Post install postgresql
+  debug:
+    msg: Post install postgresql
+
+- name: Change postgres user password
+  user:
+    name: "{{ pg_admin }}"
+    state: present
+    password: "{{ pg_admin_password | password_hash('sha512') }}"

@@ -1,4 +1,0 @@
----
-- name: Post install postgresql
-  debug:
-    msg: Post install postgresql

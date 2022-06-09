@@ -25,7 +25,7 @@ postgresql:
   vars:
 
     # Postgresql install common
-    pg_version: 12  # Postgresql version (12, 13, 14)
+    pg_version: 13  # Postgresql version (12, 13, 14)
 
     # Postgresql repo
     pg_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"  # It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
@@ -33,6 +33,7 @@ postgresql:
     pg_apt_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 
     # Postgresql repo cluster DB options
+    pg_psql: "/usr/bin/psql"
     pg_dropcluster: "/usr/bin/pg_dropcluster"  # cluster removal utility
     pg_createcluster: "/usr/bin/pg_createcluster"  # cluster create utility
     pg_cluster_name: "main"
@@ -42,10 +43,10 @@ postgresql:
     pg_conf_dir: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is default path for postgresql configuration files on "like Debian" OS
 
 children:
-  primary:
+  pg_primary:
     hosts:
       astra1:
-  standby:
+  pg_standby:
     hosts:
       astra2:
       astra3:
