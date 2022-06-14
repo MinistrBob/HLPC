@@ -11,7 +11,7 @@
     url: "{{ pg_apt_key }}"
     state: present
 
-# In Astra Linux 1.7 postgresql depends on libpq5 library and we need specific version this library. If the version is not specified explicitly, then the default version from the native OS repository will be installed.
+# In Astra Linux 1.7 postgresql depends on libpq5 library and we need specific version this library. If the version is not specified explicitly, then the default version from the native OS repository will be installed. An attempt is made to install the latest version of the libpq5.
 - name: "Get libpq5 version"
   shell: "apt-cache policy libpq5 | grep -Po -m1 '{{ pg_version }}.*pgdg\\S*'"
   register: libpq5_version
@@ -53,23 +53,25 @@
 - name: Drop the default cluster
   shell: "{{ pg_dropcluster }} {{ pg_version }} {{ pg_cluster_name }}"
   when: postgresql_installed.changed
-  become: yes
+  become: true
   become_user: "{{ pg_admin }}"
   register: drop_database
   changed_when: drop_database.rc == 0
   failed_when: drop_database.rc != 0
 
+# @FORPRIMARY
 # Create postgresql DB cluster with checksums (option --data-checksums is required)
 # like /usr/lib/postgresql/13/bin/initdb -D /data/postgresql/13/main --data-checksums
 - name: Create the database
   shell: "{{ pg_createcluster }} --datadir={{ pg_data_dir }} {{ pg_version }} {{ pg_cluster_name }} -- --data-checksums"
-  become: yes
+  become: true
   become_user: "{{ pg_admin }}"
   when: drop_database.changed and inventory_hostname in groups['pg_primary']
   register: create_database
   changed_when: create_database.rc == 0
   failed_when: create_database.rc != 0
 
+# @FORPRIMARY
 - name: Create a directory for archive WAL
   file:
     path: "{{ pg_data_dir }}/pg_archive"
@@ -79,6 +81,7 @@
     mode: '0700'
   when: inventory_hostname in groups['pg_primary']
 
+# @FORPRIMARY
 - name: Create a directory for logs
   file:
     path: "{{ pg_data_dir }}/log"
@@ -104,15 +107,17 @@
     group: {{ pg_admin }}
     mode: 0640
 
+# @FORPRIMARY
 - name: Start postgresql service {{ pg_service_name }}
   systemd:
     name: "{{ pg_service_name }}"
     state: stopped
   when: create_database.changed and inventory_hostname in groups['pg_primary']
 
+# @FORPRIMARY
 # psql -U username -d database -c "ALTER USER {{ pg_admin }} WITH PASSWORD '{{ pg_admin_password }}';"
 - name: Change password for {{ pg_admin }} user in DB
-  become: yes
+  become: true
   become_user: "{{ pg_admin }}"
   postgresql_user: 
     name: "{{ pg_admin }}"
@@ -121,6 +126,7 @@
     PGOPTIONS: "-c password_encryption=scram-sha-256"
   when: inventory_hostname in groups['pg_primary']
 
+# @FORPRIMARY
 # Slots will be created with pg_basebackup
 #- name: Create physical slot if doesn't exist
 #  become: yes
@@ -129,7 +135,7 @@
 #    slot_name: physical_one
 
 - name: Сreating a special user {{ pg_replicator }} for primary-standby replication
-  become: yes
+  become: true
   become_user: "{{ pg_admin }}"
   postgresql_user: 
     name: "{{ pg_replicator }}"
@@ -138,6 +144,12 @@
     PGOPTIONS: "-c password_encryption=scram-sha-256"
   when: inventory_hostname in groups['pg_primary']
 
+# @FORSTANDBY
+- name: Create standby databases
+  shell: "pg_basebackup -h {{ groups['pg_primary'][0] }} -U {{ pg_replicator }} -p 5432 -D {{ pg_data_dir }} -Fp -Xs -P -R -v -С -S "
+  become: true
+  become_user: "{{ pg_admin }}"
+  when: inventory_hostname in groups['pg_standby']
 
 
 
