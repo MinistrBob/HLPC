@@ -111,7 +111,7 @@
 - name: Start postgresql service {{ pg_service_name }}
   systemd:
     name: "{{ pg_service_name }}"
-    state: stopped
+    state: started
   when: create_database.changed and inventory_hostname in groups['pg_primary']
 
 # @FORPRIMARY
@@ -124,7 +124,7 @@
     password: "{{ pg_admin_password }}"
   environment:
     PGOPTIONS: "-c password_encryption=scram-sha-256"
-  when: inventory_hostname in groups['pg_primary']
+  when: create_database.changed and inventory_hostname in groups['pg_primary']
 
 # @FORPRIMARY
 # Slots will be created with pg_basebackup
@@ -142,17 +142,21 @@
     password: "{{ pg_replicator_password }}"
   environment:
     PGOPTIONS: "-c password_encryption=scram-sha-256"
-  when: inventory_hostname in groups['pg_primary']
+  when: create_database.changed and inventory_hostname in groups['pg_primary']
 
 # @FORSTANDBY
 - name: Create standby databases
-  shell: "pg_basebackup -h {{ groups['pg_primary'][0] }} -U {{ pg_replicator }} -p 5432 -D {{ pg_data_dir }} -Fp -Xs -P -R -v -С -S "
+  shell: "pg_basebackup -h {{ groups['pg_primary'][0] }} -U {{ pg_replicator }} -p 5432 -D {{ pg_data_dir }} -Fp -Xs -P -R -v -С -S {{ inventory_hostname }}"
   become: true
   become_user: "{{ pg_admin }}"
-  when: inventory_hostname in groups['pg_standby']
+  when: create_database.changed and inventory_hostname in groups['pg_standby']
+  register: create_standby
+  changed_when: create_standby.rc == 0
+  failed_when: create_standby.rc != 0
 
-
-
-
-#S	pg_basebackup
-#S	systemctl start postgresql@13-main.service
+# @FORSTANDBY
+- name: Start postgresql service {{ pg_service_name }}
+  systemd:
+    name: "{{ pg_service_name }}"
+    state: started
+  when: create_standby.changed and inventory_hostname in groups['pg_standby']
