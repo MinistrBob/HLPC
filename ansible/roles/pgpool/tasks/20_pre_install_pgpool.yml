@@ -1,4 +1,7 @@
 ---
-- name: NOP
-  ansible.builtin.debug:
-    msg: "NOP"
+# iputils-arping need for watchdog
+- name: Install required packages
+  apt:
+    name:
+      - iputils-arping
+    state: present

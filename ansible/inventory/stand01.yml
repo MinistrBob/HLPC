@@ -27,6 +27,7 @@ postgresql:
 
     # Postgresql install common
     pg_version: 13  # Postgresql version (12, 13, 14)
+    pg_autorestart_postgresql_on: true  # 
 
     # Postgresql repo
     pg_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"  # It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7

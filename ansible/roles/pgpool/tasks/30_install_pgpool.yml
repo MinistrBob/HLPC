@@ -1,12 +1,10 @@
 ---
-- name: NOP
-  debu
 
--- нужен для watchdog на 194-196
-# ----------------------------------------------------------
-# sudo apt-get install -y iputils-arping
 
 -- Авторестар сервиса postgresql [добавить в установку postgresql]
+-- Есть параметр [search_primary_node_timeout](https://www.pgpool.net/docs/latest/en/html/runtime-config-failover.html#GUC-SEARCH-PRIMARY-NODE-TIMEOUT) в котором можно установить timeout когда pgpool2 начнёт искать primary, это для того чтобы сервера postgresql успели стартануть.
+-- (default) search_primary_node_timeout = 5min
+-- Нужно чтобы search_primary_node_timeout = 60 было больше StartLimitIntervalSec=30
 # ----------------------------------------------------------
 # -- Авторестар сервиса postgresql в файле /lib/systemd/system/postgresql@.service
 # sudo nano /lib/systemd/system/postgresql@.service
@@ -45,6 +43,9 @@ postgres ALL=NOPASSWD: /usr/bin/arping
 -- Pgpool сейчас устанавливается прямо из репозитория Postgres. Т.е. настройка репо postgres это общее действие для postgresql и pgpool
 
 -- На серверах pgpool2 достаточно установить только пакет pgpool2, он сам установит все зависимости и даже postgresql но только common пакет. 
+Установить Pgpool2
+-- ВНИМАНИЕ: Если при установке не указывать конкретную версию, Astra в первую очередь берёт из своего репо. И тогда устанавливается версия 4.1. Поэтому нужно указывать нужную версию.
+-- ВНИМАНИЕ: Пакет postgresql-13-pgpool2 зависит от postgresql-13 и содержит несколько библиотек и extentions которые интегрируются с postgresql и необходимы для работы с pgpool2 (pgpool_adm.so, pgpool-recovery.so, pgpool-regclass.so). Т.е. если ставить pgpool2 на комп где нет postgresql этот пакет не нужен.
 # ----------------------------------------------------------
 # -- Но можно на все сервера поставить всё и отключить ненужные службы. 
 # sudo apt-get install -y pgpool2=4.3.1-1.pgdg100+1  

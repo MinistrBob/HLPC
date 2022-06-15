@@ -107,11 +107,23 @@
     group: {{ pg_admin }}
     mode: 0640
 
+# Turning on autorestart postgresql service.
+# There is parameter [search_primary_node_timeout](https://www.pgpool.net/docs/latest/en/html/runtime-config-failover.html#GUC-SEARCH-PRIMARY-NODE-TIMEOUT) in pgpool2.
+# (default) search_primary_node_timeout = 5min
+# Parameter search_primary_node_timeout = 60 must be greater than StartLimitIntervalSec=30
+- name: Turning on autorestart postgresql service.
+  template:
+    src: "postgresql-service.j2"
+    dest: "/lib/systemd/system/postgresql@.service"
+    mode: 0644
+  when: pg_autorestart_postgresql_on
+
 # @FORPRIMARY
 - name: Start postgresql service {{ pg_service_name }}
   systemd:
     name: "{{ pg_service_name }}"
     state: started
+    daemon_reload: yes
   when: create_database.changed and inventory_hostname in groups['pg_primary']
 
 # @FORPRIMARY
