@@ -2,3 +2,8 @@
 - name: NOP
   ansible.builtin.debug:
     msg: "NOP"
+
+# On Astra Linux, the firewall is not installed by default, so you do not need to configure it.
+# firewall-cmd --permanent --zone=public --add-service=postgresql
+# firewall-cmd --permanent --zone=public --add-port=9999/tcp --add-port=9898/tcp --add-port=9000/tcp  --add-port=9694/udp
+# firewall-cmd --reload

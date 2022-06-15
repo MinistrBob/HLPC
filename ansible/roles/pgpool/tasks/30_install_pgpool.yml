@@ -1,11 +1,288 @@
 ---
-- name: "Install packages"
-  dnf: "name={{ item }} state=present"
-  with_items:
-    - postgresql
-    - postgresql-server
+- name: NOP
+  debu
 
-- name: "Install Python packages"
-  pip: "name={{ item }}  state=present"
-  with_items:
-    - psycopg2-binary
+-- нужен для watchdog на 194-196
+# ----------------------------------------------------------
+# sudo apt-get install -y iputils-arping
+
+-- Авторестар сервиса postgresql [добавить в установку postgresql]
+# ----------------------------------------------------------
+# -- Авторестар сервиса postgresql в файле /lib/systemd/system/postgresql@.service
+# sudo nano /lib/systemd/system/postgresql@.service
+
+# [Unit] 
+# StartLimitIntervalSec=30 
+# StartLimitBurst=1 
+# [Service] 
+# Restart=on-failure
+
+# -- Потом 
+# sudo systemctl daemon-reload
+
+-- Конфигурирование пользователя postgres [Какую-то отдлеьную роль которую использовать в установке postgresql и pgpool???]
+# ----------------------------------------------------------
+# --Чтобы postgres мог использовать systemctl ему нужно sudo
+# sudo visudo
+# -- добавить такую строку и перелогиниться под postgres
+# postgres ALL=NOPASSWD: /usr/bin/systemctl
+postgres ALL=NOPASSWD: /usr/bin/ip
+postgres ALL=NOPASSWD: /usr/bin/arping
+# ----------------------------------------------------------
+# -- (а на Astra нужно еще и мандатный уровень пользователю postgresql изменить)
+# ```
+# sudo pdpl-user -i 63 postgres
+# ```
+# ----------------------------------------------------------
+# -- установить переменную LANG чтобы сообщения были по английски.
+# -- 191-193 (для postgres)
+# sudo su - postgres
+# nano ~/.bash_profile
+# export LANG=en_US.UTF-8
+# cat ~/.bash_profile
+# -- 194-196 (для worker)
+
+-- Pgpool сейчас устанавливается прямо из репозитория Postgres. Т.е. настройка репо postgres это общее действие для postgresql и pgpool
+
+-- На серверах pgpool2 достаточно установить только пакет pgpool2, он сам установит все зависимости и даже postgresql но только common пакет. 
+# ----------------------------------------------------------
+# -- Но можно на все сервера поставить всё и отключить ненужные службы. 
+# sudo apt-get install -y pgpool2=4.3.1-1.pgdg100+1  
+# sudo apt-get install -y libpgpool2=4.3.1-1.pgdg100+1
+# -- это на сервера postgresql нужно ставить
+# sudo apt-get install -y postgresql-13-pgpool2=4.3.1-1.pgdg100+1
+
+-- pgpool после установки Запущен??? можно сделать здесь его остановку
+# ----------------------------------------------------------
+# systemctl stop pgpool2
+
+-- ВАЖНО: Внести изменения в файл запускающий pgpool2 чтобы сервис стартовал после того как загружена сеть и распознавание DNS
+# ----------------------------------------------------------
+# ```
+# sudo nano /lib/systemd/system/pgpool2.service
+
+# # Wants=postgresql.service
+# After=network.target resolvconf.service
+
+# sudo systemctl daemon-reload
+# ```
+
+-- На 191 создать пользователя pgpool остальные уже есть (Change PostgreSQL Password Authentication to SCRAM-SHA-256)
+# ----------------------------------------------------------
+# ```
+# $ psql
+# # SHOW password_encryption;
+# ### postgres=# SET password_encryption = 'scram-sha-256';
+# SELECT rolpassword from pg_authid where rolname = 'pgpool';
+# postgres=# CREATE ROLE pgpool WITH LOGIN;
+# postgres=# \password pgpool
+# или
+# ALTER USER "pgpool" with password 'pgpool';
+# postgres=# GRANT pg_monitor TO pgpool;
+# ```
+
+-- Настроить passwordless доступ
+# ----------------------------------------------------------
+# В документации предлагается на каждом сервере pgpool сгенерировать ssh ключ и раскопировать на все postgresql сервера, но можно сгенерировать один ключ и раскопировать на все сервера pgpool и postgresql. Но пока делаю как в документации.
+# -- Настраиваю passwordless SSH между 194-196 и 191-193 для пользователя root -> postgres и postgres -> postgres.
+# -- На 194-196
+# ```
+# $ sudo -s
+# mkdir ~/.ssh 
+# chmod 700 ~/.ssh
+
+# cd ~/.ssh
+# ssh-keygen -t rsa -f id_rsa_pgpool
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra1
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra2
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra3
+
+# # sudo su - postgres
+# mkdir ~/.ssh  
+# chmod 700 ~/.ssh
+# cd ~/.ssh
+# ssh-keygen -t rsa -f id_rsa_pgpool
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra1
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra2
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra3
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra4
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra5
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra6
+
+# -- Между 191-193 postgres - postgres
+# # sudo su - postgres 
+# mkdir ~/.ssh   
+# chmod 700 ~/.ssh 
+# cd ~/.ssh 
+# ssh-keygen -t rsa -f id_rsa_pgpool 
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra1 
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra2 
+# ssh-copy-id -i id_rsa_pgpool.pub postgres@astra3
+# ```
+
+-- Создание файлов .pgpassfile
+# ----------------------------------------------------------
+# To allow repluser without specifying password for streaming replication and online recovery, and execute pg_rewindusing postgres, we create the .pgpassfile in postgresuser's home directory and change the permission to 600on each PostgreSQLserver.
+# -- Пользователь replicator у меня уже настроен на 191-193 поэтому его не трогаю
+# -- На 194-196 191-196 (этот файл нужно создавать на всех серверах, т.к. pg_rewind выполняется без указания пароля --source-server="user=postgres ...."  и будет ошибка: pg_rewind: fatal: fe_sendauth: no password supplied
+# ```
+# -- 191-193
+# [all servers]# su - postgres 
+# [all servers]$ nano /var/lib/postgresql/.pgpass 
+# astra1:5432:postgres:postgres:postgres 
+# astra2:5432:postgres:postgres:postgres 
+# astra3:5432:postgres:postgres:postgres env\
+# astra4:9999:postgres:postgres:postgres 
+# astra5:9999:postgres:postgres:postgres 
+# astra6:9999:postgres:postgres:postgres
+# [all servers]$ chmod 600 /var/lib/postgresql/.pgpass
+# [all servers]$ cat /var/lib/postgresql/.pgpass
+# -- 194-196 (для worker тоже создать в его HOME)
+# cd ~
+# nano .pgpass
+# chmod 0600 .pgpass
+# cat .pgpass
+# ```
+
+-- Создание файлов .pcppass
+# ----------------------------------------------------------
+# Since follow_primary.sh script must execute PCP command without entering a password, we need to create .pcppass in the home directory of Pgpool-II startup user (postgres user) on each server.
+# -- На 194-196
+# ```
+# [all servers]# su - postgres 
+# [all servers]$ nano /var/lib/postgresql/.pcppass 
+# localhost:9898:pgpool:pgpool
+# [all servers]$ chmod 600 /var/lib/postgresql/.pcppass
+# [all servers]$ cat /var/lib/postgresql/.pcppass
+# ```
+
+-- Create pgpool_node_id
+# ----------------------------------------------------------
+# -- На каждом хосте 194-196 создать ID файл. 
+# ```
+# # nano /etc/pgpool2/pgpool_node_id
+# # cat /etc/pgpool2/pgpool_node_id
+
+# echo 0 > /etc/pgpool2/pgpool_node_id
+# echo 1 > /etc/pgpool2/pgpool_node_id
+# echo 2 > /etc/pgpool2/pgpool_node_id
+
+# root@astra4:~# cat /etc/pgpool2/pgpool_node_id
+# 0
+# root@astra5:~# cat /etc/pgpool2/pgpool_node_id
+# 1
+# root@astra6:~# cat /etc/pgpool2/pgpool_node_id
+# 2
+# ```
+
+-- Client Authentication Configuration (настройка pool_hba.conf)
+-- Пока не включаю pool_hba.config - enable_pool_hba = off и не настраиваю его.
+# ----------------------------------------------------------
+# -- Вот это ничего не делаю
+# ```
+# cp /etc/pgpool2/pool_hba.conf{,.bak}
+# nano /etc/pgpool2/pool_hba.conf
+# diff /etc/pgpool2/pool_hba.conf{,.bak}
+# ```
+
+-- The default password file name for authentication is pool_passwd. To use scram-sha-256 authentication, the decryption key to decrypt the passwords is required. We create the .pgpoolkey file in Pgpool-II start user postgres's (Pgpool-II 4.1 or later) home directory. (Pgpool-II 4.0 or before, by default Pgpool-II is started as root)
+# ----------------------------------------------------------
+# ```
+# [all servers]# sudo chmod 770 /etc/pgpool2/pool_passwd
+
+# [all servers]# sudo su - postgres
+# -- Здесь любая фраза подойдёт вместо 'postgres'
+# [all servers]$ echo 'postgres' > ~/.pgpoolkey
+# [all servers]$ chmod 600 ~/.pgpoolkey
+# ```
+
+-- Execute command pg_enc -m -k /path/to/.pgpoolkey -u username -pto register user name and AES encrypted password in file pool_passwd. If pool_passwd doesn't exist yet, it will be created in the same directory as pgpool.conf.
+# ----------------------------------------------------------
+# ```
+# [all servers]# su - postgres
+# [all servers]$ /usr/sbin/pg_enc -m -k ~/.pgpoolkey -u pgpool -p
+# db password: [pgpool user's password]
+# [all servers]$ /usr/sbin/pg_enc -m -k ~/.pgpoolkey -u postgres -p
+# db password: [postgres user's password]
+
+# # cat /etc/pgpool2/pool_passwd
+# pgpool:AESrkH81/afiH7E6qaImGSQqw== 
+# postgres:AESbPro4vs9cT622am0+RjU3Q==
+# ```
+
+-- Создать папку для логирования
+# ----------------------------------------------------------
+# Create the log directory on all servers.
+# ```
+# [all servers]# mkdir /var/log/pgpool2
+# [all servers]# chown postgres:postgres /var/log/pgpool2
+# ```
+
+-- Настроить конфигурационный файл pgpool.conf
+# ----------------------------------------------------------
+# ```
+# cp /etc/pgpool2/pgpool.conf{,.bak}
+# nano /etc/pgpool2/pgpool.conf
+# diff /etc/pgpool2/pgpool.conf{,.bak}
+# ```
+
+-- Батники pgpool Failover configuration
+# ----------------------------------------------------------
+# Подготовить батники. Во всех нужно проставить 
+# ```
+# PGHOME=/usr/lib/postgresql/13
+# ```
+# ```
+# failover_command = '/etc/pgpool2/failover.sh %d %h %p %D %m %H %M %P %r %R %N %S'
+# follow_primary_command = '/etc/pgpool2/follow_primary.sh %d %h %p %D %m %H %M %P %r %R %N %S'
+# ```
+# -- копирование батников и права
+# ```
+# [all servers]# cp /tmp/pgpool2/*.sh /etc/pgpool2/
+# [all servers]# chown postgres:postgres /etc/pgpool2/*.sh
+# ```
+
+-- Батники pgpool Online Recovery Configurations
+-- НА postgresql СЕРВЕРАХ !!!
+# ----------------------------------------------------------
+# Скрипты нужно разворачивать в $PGDATA на postgresql серверах.
+# Такие настройки в pgpool.conf
+# ```
+# recovery_user = 'postgres'
+# recovery_password = ''
+# recovery_1st_stage_command = 'recovery_1st_stage'
+# #recovery_2nd_stage_command = ''
+# ```
+# Копирую pgpool_remote_start и recovery_1st_stage в $PGDATA на 191-193
+# ```
+# sudo cp /home/worker/pgpool2/recovery_1st_stage /var/lib/postgresql/13/main/recovery_1st_stage
+# sudo cp /home/worker/pgpool2/pgpool_remote_start /var/lib/postgresql/13/main/pgpool_remote_start
+# sudo chown postgres:postgres /var/lib/postgresql/13/main/{recovery_1st_stage,pgpool_remote_start}
+# sudo ls -al /var/lib/postgresql/13/main
+# ```
+
+-- Создать расширение (только на PRIMARY)
+# ----------------------------------------------------------
+# -- У меня ругнулось что такое расширение уже есть
+# ```
+# [server1]# sudo su - postgres
+# [server1]$ psql template1 -c "CREATE EXTENSION pgpool_recovery"
+# ```
+
+-- We set Pgpool-IIto start automatically on all servers.
+# ----------------------------------------------------------
+# -- На 191-193. После установки pgpool2 
+# ```
+# [all servers]# systemctl enable pgpool2
+# [all servers]# systemctl status pgpool2
+systemctl start pgpool2
+# ```
+
+-- Чтобы работали команды PCP нужно добавить пользователя, еще можно добавить файл паролей
+# ----------------------------------------------------------
+# ```
+# echo 'pgpool:'`/usr/sbin/pg_md5 pgpool` | sudo tee -a /etc/pgpool2/pcp.conf
+# echo 'postgres:'`/usr/sbin/pg_md5 postgres` | sudo tee -a /etc/pgpool2/pcp.conf
+# cat /etc/pgpool2/pcp.conf
+# ```
+
