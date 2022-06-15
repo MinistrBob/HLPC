@@ -1,3 +1,4 @@
 ---
 - name: Prepare OS
   include: prepareos.yml
+  when: prepare_os
