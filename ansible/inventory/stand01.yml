@@ -10,6 +10,7 @@ all:
     stand_name: "stand01"  # config files are linked to this name
 
     # What components to install
+    prepare_os:  # When restarting, you can save some time by not performing these procedures.
     install_postgresql: true  # Whether to install postgresql?
     install_postgresql_contrib: false  # Whether to install postgresql contrib?
     install_pgpool: true  # Whether to install pgpool?

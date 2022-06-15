@@ -19,6 +19,17 @@
           Supported versions are {{ supported_pg_version }}"
   when: pg_version|int not in supported_pg_version
 
+- name: Prepare OS
+  become: yes
+  become_method: sudo
+  gather_facts: yes
+  hosts: all
+  vars_files:
+    - vars/secret_vars.yml
+  roles:
+    - name: prepareos
+      when: prepare_os
+
 - name: Install postgresql
   become: yes
   become_method: sudo

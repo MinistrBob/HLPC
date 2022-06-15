@@ -1,11 +1,10 @@
 ---
-- name: Pre-reqs install task
-  include: pre_install_pgpool.yml
-
-- name: Install pgpool
-  include: install_pgpool.yml
-
 - name: Setup firewall
-  include: setup_firewall_pgpool.yml
+  include: 10_setup_firewall_pgpool.yml
   when: setup_firewall
 
+- name: Pre-reqs install task
+  include: 20_pre_install_pgpool.yml
+
+- name: Install pgpool
+  include: 30_install_pgpool.yml
