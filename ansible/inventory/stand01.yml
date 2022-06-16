@@ -44,14 +44,14 @@ postgresql:
     #pg_data_dir: "/mnt/data/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is NOT default path for postgresql DB cluster
     pg_conf_dir: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is default path for postgresql configuration files on "like Debian" OS
 
-children:
-  pg_primary:
-    hosts:
-      astra1:
-  pg_standby:
-    hosts:
-      astra2:
-      astra3:
+  children:
+    pg_primary:
+      hosts:
+        astra1:
+    pg_standby:
+      hosts:
+        astra2:
+        astra3:
 
 pgpool:
   hosts:
