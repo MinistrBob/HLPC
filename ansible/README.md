@@ -5,8 +5,10 @@ ATTENTION: In the current implementation, the collection is designed to install 
 
 Authentication method for Postgresql is "scram-sha-256" this is requirement pgpool2.  
 
-# Install collection
+# Общие примечания
+- Pgpool устанавливается из репозитория Postgresql.  
 
+# Install collection
 Нужно описать метод через ansible-galaxy install
 
 ## (Option 2) Clone git repo

@@ -1,0 +1,11 @@
+# It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
+- name: "Add specified repository into sources list using specified filename"
+  apt_repository:
+    repo: "{{ pg_apt_repository }} {{ pg_version }}"
+    state: present
+    filename: "{{ pg_apt_repository_filename }}"
+
+- name: "Add an Apt signing key for postgresql"
+  apt_key:
+    url: "{{ pg_apt_key }}"
+    state: present

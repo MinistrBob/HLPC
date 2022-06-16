@@ -27,7 +27,7 @@
   vars_files:
     - vars/secret_vars.yml
   roles:
-    - name: prepareos
+    - name: prepare_os
       when: prepare_os
 
 - name: Install postgresql
@@ -38,6 +38,8 @@
   vars_files:
     - vars/secret_vars.yml
   roles:
+    - name: postgresql_repo_add
+      when: install_postgresql
     - name: postgresql
       when: install_postgresql
 
@@ -49,5 +51,7 @@
   vars_files:
     - vars/secret_vars.yml
   roles:
+    - name: postgresql_repo_add
+      when: install_pgpool
     - name: pgpool
       when: install_pgpool

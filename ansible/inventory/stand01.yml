@@ -2,7 +2,7 @@
 # ATTENTION: In the current implementation, the collection is designed to install Postgresql version starting from 12 and higher on the Astra Linux Special Edition 1.7 OS that corresponds to Debian 10 (Buster) or Ubuntu 18.04 (Bionic).
 #            For other OS or Postgresql versions, the collection needs to be modified.
 
-# Inventory HLPC architecture variant 1 (postgres and pgpool on different servers = six servers)  
+# Inventory HLPC architecture variant 1 (postgres and pgpool on different servers = six servers)
 
 all:
   vars:
@@ -28,6 +28,9 @@ postgresql:
     # Postgresql install common
     pg_version: 13  # Postgresql version (12, 13, 14)
     pg_autorestart_postgresql_on: true  # Turning on autorestart postgresql service with systemd in file /lib/systemd/system/postgresql@.service
+    # Specific versions apps (if not specified then try to determine automatically)
+    # libpq5_version: "13.6-1.pgdg100+1"
+    # pgpool2_version: "4.3.1-1.pgdg100+1" 
 
     # Postgresql repo
     pg_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main"  # It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
@@ -44,14 +47,14 @@ postgresql:
     #pg_data_dir: "/mnt/data/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is NOT default path for postgresql DB cluster
     pg_conf_dir: "/etc/postgresql/{{ pg_version }}/{{ pg_cluster_name }}"  # This is default path for postgresql configuration files on "like Debian" OS
 
-  children:
-    pg_primary:
-      hosts:
-        astra1:
-    pg_standby:
-      hosts:
-        astra2:
-        astra3:
+children:
+  pg_primary:
+    hosts:
+      astra1:
+  pg_standby:
+    hosts:
+      astra2:
+      astra3:
 
 pgpool:
   hosts:

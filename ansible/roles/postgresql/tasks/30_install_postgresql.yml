@@ -1,25 +1,15 @@
 ---
-# It is "buster" here because Astra Linux 1.7 corresponds to Debian 10 (Buster) and command 'lsb_release -cs' outputs result 'buster' on Debian 10 and '1.7_x86-64' on Astra Linux 1.7
-- name: "Add specified repository into sources list using specified filename"
-  apt_repository:
-    repo: "{{ pg_apt_repository }} {{ pg_version }}"
-    state: present
-    filename: "{{ pg_apt_repository_filename }}"
-
-- name: "Add an Apt signing key for postgresql"
-  apt_key:
-    url: "{{ pg_apt_key }}"
-    state: present
-
 # In Astra Linux 1.7 postgresql depends on libpq5 library and we need specific version this library. If the version is not specified explicitly, then the default version from the native OS repository will be installed. An attempt is made to install the latest version of the libpq5.
 - name: "Get libpq5 version"
   shell: "apt-cache policy libpq5 | grep -Po -m1 '{{ pg_version }}.*pgdg\\S*'"
-  register: libpq5_version
+  register: temp_libpq5_version
+  when: libpq5_version is not defined
 
 - name: "Install libpq5 library"
   apt:
-    name: "libpq5={{ libpq5_version.stdout }}"
+    name: "libpq5={{ temp_libpq5_version.stdout if libpq5_version is not defined else libpq5_version }}"
     state: present
+
 # --------------------------------------------
 
 - name: "Install postgresql packages"

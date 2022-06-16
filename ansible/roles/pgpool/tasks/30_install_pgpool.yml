@@ -1,46 +1,19 @@
 ---
+- name: "Get pgpool2 version"
+  shell: "apt-cache policy pgpool2 | grep -Po -m1 '\\d.\\d.\\d-\\S*'"
+  register: temp_pgpool2_version
+  when: pgpool2_version is not defined
 
+- name: "Install pgpool2"
+  apt:
+    name: "pgpool2={{ temp_pgpool2_version.stdout if pgpool2_version is not defined else pgpool2_version }}"
+    state: present
 
--- Авторестар сервиса postgresql [добавить в установку postgresql]
--- Есть параметр [search_primary_node_timeout](https://www.pgpool.net/docs/latest/en/html/runtime-config-failover.html#GUC-SEARCH-PRIMARY-NODE-TIMEOUT) в котором можно установить timeout когда pgpool2 начнёт искать primary, это для того чтобы сервера postgresql успели стартануть.
--- (default) search_primary_node_timeout = 5min
--- Нужно чтобы search_primary_node_timeout = 60 было больше StartLimitIntervalSec=30
-# ----------------------------------------------------------
-# -- Авторестар сервиса postgresql в файле /lib/systemd/system/postgresql@.service
-# sudo nano /lib/systemd/system/postgresql@.service
+- name: "Install libpgpool2"
+  apt:
+    name: "libpgpool2={{ temp_pgpool2_version.stdout if pgpool2_version is not defined else pgpool2_version }}"
+    state: present
 
-# [Unit] 
-# StartLimitIntervalSec=30 
-# StartLimitBurst=1 
-# [Service] 
-# Restart=on-failure
-
-# -- Потом 
-# sudo systemctl daemon-reload
-
--- Конфигурирование пользователя postgres [Какую-то отдлеьную роль которую использовать в установке postgresql и pgpool???]
-# ----------------------------------------------------------
-# --Чтобы postgres мог использовать systemctl ему нужно sudo
-# sudo visudo
-# -- добавить такую строку и перелогиниться под postgres
-# postgres ALL=NOPASSWD: /usr/bin/systemctl
-postgres ALL=NOPASSWD: /usr/bin/ip
-postgres ALL=NOPASSWD: /usr/bin/arping
-# ----------------------------------------------------------
-# -- (а на Astra нужно еще и мандатный уровень пользователю postgresql изменить)
-# ```
-# sudo pdpl-user -i 63 postgres
-# ```
-# ----------------------------------------------------------
-# -- установить переменную LANG чтобы сообщения были по английски.
-# -- 191-193 (для postgres)
-# sudo su - postgres
-# nano ~/.bash_profile
-# export LANG=en_US.UTF-8
-# cat ~/.bash_profile
-# -- 194-196 (для worker)
-
--- Pgpool сейчас устанавливается прямо из репозитория Postgres. Т.е. настройка репо postgres это общее действие для postgresql и pgpool
 
 -- На серверах pgpool2 достаточно установить только пакет pgpool2, он сам установит все зависимости и даже postgresql но только common пакет. 
 Установить Pgpool2
@@ -67,6 +40,30 @@ postgres ALL=NOPASSWD: /usr/bin/arping
 
 # sudo systemctl daemon-reload
 # ```
+
+
+-- Конфигурирование пользователя postgres [Какую-то отдлеьную роль которую использовать в установке postgresql и pgpool???]
+# ----------------------------------------------------------
+# --Чтобы postgres мог использовать systemctl ему нужно sudo
+# sudo visudo
+# -- добавить такую строку и перелогиниться под postgres
+# postgres ALL=NOPASSWD: /usr/bin/systemctl
+postgres ALL=NOPASSWD: /usr/bin/ip
+postgres ALL=NOPASSWD: /usr/bin/arping
+# ----------------------------------------------------------
+# -- (а на Astra нужно еще и мандатный уровень пользователю postgresql изменить)
+# ```
+# sudo pdpl-user -i 63 postgres
+# ```
+# ----------------------------------------------------------
+# -- установить переменную LANG чтобы сообщения были по английски.
+# -- 191-193 (для postgres)
+# sudo su - postgres
+# nano ~/.bash_profile
+# export LANG=en_US.UTF-8
+# cat ~/.bash_profile
+# -- 194-196 (для worker)
+
 
 -- На 191 создать пользователя pgpool остальные уже есть (Change PostgreSQL Password Authentication to SCRAM-SHA-256)
 # ----------------------------------------------------------
