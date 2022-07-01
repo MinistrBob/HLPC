@@ -9,8 +9,11 @@
 #   debconf: (Ни одна из dialog-подобных программ не установлена, поэтому вы не можете использовать dialog-интерфейс. at /usr/share/perl5/Debconf/FrontEnd/Dialog.pm line 76.)
 #   debconf: будет использован интерфейс: Readline
 - name: Install required packages
-  apt:
-    name:
+  package:
+    name: 
+      - sshpass
+      - python3-psycopg2
+      - python-psycopg2
       - python-apt
       - dialog
       - apt-utils

@@ -1,4 +1,5 @@
 ---
-- name: NOP
-  ansible.builtin.debug:
-    msg: "NOP"
+- name: Install required packages
+  package:
+    name: [python3-psycopg2, python-psycopg2]
+    state: present

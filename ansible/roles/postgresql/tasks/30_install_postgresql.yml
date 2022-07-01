@@ -9,6 +9,7 @@
   apt:
     name: "libpq5={{ temp_libpq5_version.stdout if libpq5_version is not defined else libpq5_version }}"
     state: present
+    
 
 # --------------------------------------------
 
@@ -28,11 +29,11 @@
     state: present
     update_cache: yes
 
-#- name: "Install Python packages"
-#  package:
-#    name:
-#      - psycopg2-binary
-#    state: present
+- name: Change postgres user password
+  user:
+    name: "{{ pg_admin }}"
+    state: present
+    password: "{{ pg_admin_password | password_hash('sha512') }}"
 
 - name: Stop postgresql service {{ pg_service_name }}
   systemd:
@@ -40,9 +41,10 @@
     state: stopped
   when: postgresql_installed.changed
 
+# @FORPRIMARY
 - name: Drop the default cluster
   shell: "{{ pg_dropcluster }} {{ pg_version }} {{ pg_cluster_name }}"
-  when: postgresql_installed.changed
+      when: postgresql_installed.changed and inventory_hostname in groups['pg_primary']
   become: true
   become_user: "{{ pg_admin }}"
   register: drop_database
@@ -66,8 +68,8 @@
   file:
     path: "{{ pg_data_dir }}/pg_archive"
     state: directory
-    owner: {{ pg_admin }}
-    group: {{ pg_admin }}
+        owner: "{{ pg_admin }}"
+        group: "{{ pg_admin }}"
     mode: '0700'
   when: inventory_hostname in groups['pg_primary']
 
@@ -76,8 +78,8 @@
   file:
     path: "{{ pg_data_dir }}/log"
     state: directory
-    owner: {{ pg_admin }}
-    group: {{ pg_admin }}
+        owner: "{{ pg_admin }}"
+        group: "{{ pg_admin }}"
     mode: '0700'
   when: inventory_hostname in groups['pg_primary']
 
@@ -85,16 +87,16 @@
   template:
     src: "{{ stand_name }}.pg_hba.conf.j2"
     dest: "{{ pg_conf_dir }}/pg_hba.conf"
-    owner: {{ pg_admin }}
-    group: {{ pg_admin }}
+        owner: "{{ pg_admin }}"
+        group: "{{ pg_admin }}"
     mode: 0640
 
 - name: Setup postgresql.conf
   template:
     src: "{{ stand_name }}.postgresql.conf.j2"
     dest: "{{ pg_conf_dir }}/postgresql.conf"
-    owner: {{ pg_admin }}
-    group: {{ pg_admin }}
+        owner: "{{ pg_admin }}"
+        group: "{{ pg_admin }}"
     mode: 0640
 
 # Turning on autorestart postgresql service.
@@ -136,19 +138,28 @@
 #  postgresql_slot:
 #    slot_name: physical_one
 
+# @FORPRIMARY
 - name: Сreating a special user {{ pg_replicator }} for primary-standby replication
   become: true
   become_user: "{{ pg_admin }}"
   postgresql_user: 
     name: "{{ pg_replicator }}"
     password: "{{ pg_replicator_password }}"
+    role_attr_flags: REPLICATION
   environment:
     PGOPTIONS: "-c password_encryption=scram-sha-256"
   when: create_database.changed and inventory_hostname in groups['pg_primary']
 
 # @FORSTANDBY
+- name: Delete postgresql data directory
+  file:
+    path: "{{ pg_data_dir }}"
+    state: absent
+  when: create_database.changed and inventory_hostname in groups['pg_standby']
+
+# @FORSTANDBY
 - name: Create standby databases
-  shell: "pg_basebackup -h {{ groups['pg_primary'][0] }} -U {{ pg_replicator }} -p 5432 -D {{ pg_data_dir }} -Fp -Xs -P -R -v -С -S {{ inventory_hostname }}"
+  shell: "pg_basebackup -h {{ groups['pg_primary'][0] }} -U {{ pg_replicator }} -p 5432 -D {{ pg_data_dir }} -Fp -Xs -P -R -v -C -S {{ inventory_hostname | replace('-', '_') }}"
   become: true
   become_user: "{{ pg_admin }}"
   when: create_database.changed and inventory_hostname in groups['pg_standby']
